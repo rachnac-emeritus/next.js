@@ -1,5 +1,12 @@
-import { findSourceMap } from 'module'
-import { inspect } from 'util'
+// Edge runtime does not implement `module` and `util`
+const findSourceMap =
+  process.env.NEXT_RUNTIME === 'edge'
+    ? () => undefined
+    : (require('module') as typeof import('module')).findSourceMap
+const inspect =
+  process.env.NEXT_RUNTIME === 'edge'
+    ? (value: unknown) => String(value)
+    : (require('util') as typeof import('util')).inspect
 
 /**
  * https://tc39.es/source-map/#index-map
@@ -90,6 +97,8 @@ export function findApplicableSourceMapPayload(
   }
 }
 
+const didWarnAboutInvalidSourceMapDEV = new Set<string>()
+
 export function filterStackFrameDEV(
   sourceURL: string,
   functionName: string,
@@ -132,15 +141,21 @@ export function filterStackFrameDEV(
     }
     return !sourceMapIgnoreListsEverything(sourceMapPayload)
   } catch (cause) {
-    // We must log a plain string here in case React is trying to serialize this error.
-    console.error(
-      inspect(
-        new Error(
-          `Failed to filter stack frame '${sourceURL}'. The associated source map is invalid. Make sure to produce a valid source map for this file.`,
-          { cause }
+    if (process.env.NODE_ENV !== 'production') {
+      if (!didWarnAboutInvalidSourceMapDEV.has(sourceURL)) {
+        // We must log a plain string here in case React is trying to serialize this error.
+        console.error(
+          inspect(
+            new Error(
+              `Failed to filter stack frame '${sourceURL}'. The associated source map is invalid. Make sure to produce a valid source map for this file.`,
+              { cause }
+            )
+          )
         )
-      )
-    )
+        didWarnAboutInvalidSourceMapDEV.add(sourceURL)
+      }
+    }
+
     return true
   }
 }
