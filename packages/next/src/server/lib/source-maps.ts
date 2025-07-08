@@ -127,7 +127,6 @@ export function filterStackFrameDEV(
     if (sourceMap === undefined) {
       // No source map assoicated.
       // TODO: Node.js types should reflect that `findSourceMap` can return `undefined`.
-      // TODO: Revisit once https://github.com/facebook/react/pull/33706 lands.
       return true
     }
     const sourceMapPayload = findApplicableSourceMapPayload(
@@ -142,17 +141,14 @@ export function filterStackFrameDEV(
     return !sourceMapIgnoreListsEverything(sourceMapPayload)
   } catch (cause) {
     if (process.env.NODE_ENV !== 'production') {
+      // TODO: Share cache with patch-error-inspect
       if (!didWarnAboutInvalidSourceMapDEV.has(sourceURL)) {
-        // We must log a plain string here in case React is trying to serialize this error.
-        console.error(
-          inspect(
-            new Error(
-              `Failed to filter stack frame '${sourceURL}'. The associated source map is invalid. Make sure to produce a valid source map for this file.`,
-              { cause }
-            )
-          )
-        )
         didWarnAboutInvalidSourceMapDEV.add(sourceURL)
+        // We should not log an actual error instance here because that will re-enter
+        // this codepath during error inspection and could lead to infinite recursion.
+        console.error(
+          `${sourceURL}: Invalid source map. Only conformant source maps can be used to filter stack frames. Cause: ${cause}`
+        )
       }
     }
 
