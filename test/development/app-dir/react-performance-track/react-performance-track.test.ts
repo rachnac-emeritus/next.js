@@ -1,7 +1,7 @@
 import { nextTestSetup } from 'e2e-utils'
 
 describe('react-performance-track', () => {
-  const { isTurbopack, next } = nextTestSetup({
+  const { next } = nextTestSetup({
     files: __dirname,
   })
 
